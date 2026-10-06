@@ -82,8 +82,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const el = e.target as HTMLElement
-      if (el.closest("input, textarea, select, [contenteditable], [role=dialog]")) return
+      if (e.target instanceof Element && e.target.closest("input, textarea, select, [contenteditable], [role=dialog]")) return
       if (e.key === "n" && !e.metaKey && !e.ctrlKey && !e.altKey) {
         e.preventDefault()
         useUi.getState().newPost()
