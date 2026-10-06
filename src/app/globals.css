@@ -1,0 +1,122 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-geist-sans);
+  --color-surface: var(--surface);
+  --color-row: var(--row);
+  --color-status-posted: var(--status-posted);
+  --color-status-ready: var(--status-ready);
+  --color-status-draft: var(--status-draft);
+  --color-status-idea: var(--status-idea);
+  --color-status-open: var(--status-open);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+/* Monochrome only. Neutral scale: 50 #FAFAFA · 100 #F5F5F5 · 200 #E5E5E5 · 500 #737373 · 900 #171717 · 950 #0A0A0A */
+:root {
+  --radius: 0.5rem;
+  --background: #f5f5f5; /* page canvas */
+  --surface: #fafafa; /* the app "window" */
+  --row: #fafafa; /* inner rows on cards */
+  --foreground: #171717;
+  --card: #ffffff;
+  --card-foreground: #171717;
+  --popover: #ffffff;
+  --popover-foreground: #171717;
+  --primary: #171717;
+  --primary-foreground: #fafafa;
+  --secondary: #f5f5f5;
+  --secondary-foreground: #171717;
+  --muted: #f5f5f5;
+  --muted-foreground: #737373;
+  --accent: #f5f5f5;
+  --accent-foreground: #171717;
+  --destructive: #404040;
+  --border: #e5e5e5;
+  --input: #e5e5e5;
+  --ring: #a3a3a3;
+  /* Post status, an ordinal ramp: further along = darker. Validated ≥2:1 on white. */
+  --status-posted: #171717;
+  --status-ready: #525252;
+  --status-draft: #8a8a8a;
+  --status-idea: #b5b5b5;
+  --status-open: #ececec;
+}
+
+.dark {
+  --background: #0a0a0a;
+  --surface: #0f0f0f;
+  --row: #1f1f1f;
+  --foreground: #fafafa;
+  --card: #171717;
+  --card-foreground: #fafafa;
+  --popover: #171717;
+  --popover-foreground: #fafafa;
+  --primary: #fafafa;
+  --primary-foreground: #171717;
+  --secondary: #262626;
+  --secondary-foreground: #fafafa;
+  --muted: #262626;
+  --muted-foreground: #a3a3a3;
+  --accent: #262626;
+  --accent-foreground: #fafafa;
+  --destructive: #d4d4d4;
+  --border: #262626;
+  --input: #2e2e2e;
+  --ring: #525252;
+  --status-posted: #fafafa;
+  --status-ready: #bdbdbd;
+  --status-draft: #8f8f8f;
+  --status-idea: #666666;
+  --status-open: #2a2a2a;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply font-sans;
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+  svg.lucide {
+    stroke-width: 1.5;
+  }
+}
