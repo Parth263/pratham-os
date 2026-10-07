@@ -14,10 +14,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
-import { PILLAR_LABEL, PILLARS, STATUS_LABEL, STATUSES } from "@/lib/labels"
+import { PillarPicker } from "@/components/pillar-picker"
+import { STATUS_LABEL, STATUSES } from "@/lib/labels"
+import { usePillars } from "@/lib/pillars"
 import { rhythmForDay } from "@/lib/slots"
 import { blankPost, useApp } from "@/lib/store"
-import type { Pillar, Post, PostStatus } from "@/lib/types"
+import type { Post, PostStatus } from "@/lib/types"
 import { useUi } from "@/lib/ui"
 
 export function PostSheet() {
@@ -34,6 +36,7 @@ function PostEditor() {
   const settings = useApp((s) => s.settings)
   const savePost = useApp((s) => s.savePost)
   const deletePost = useApp((s) => s.deletePost)
+  const pillars = usePillars()
 
   const [p, setP] = useState<Post>(() => {
     const existing = ui.id ? posts.find((x) => x.id === ui.id) : undefined
@@ -153,21 +156,7 @@ function PostEditor() {
         )}
 
         <Field label="Pillar">
-          <ToggleGroup
-            type="single"
-            variant="outline"
-            spacing={4}
-            className="flex-wrap"
-            value={p.pillar ?? ""}
-            onValueChange={(v) => set({ pillar: (v || null) as Pillar | null })}
-          >
-            {PILLARS.map((pl) => (
-              <ToggleGroupItem key={pl} value={pl} className="h-9 gap-2 px-3 data-[state=on]:border-foreground/40">
-                <PillarMark pillar={pl} />
-                {PILLAR_LABEL[pl]}
-              </ToggleGroupItem>
-            ))}
-          </ToggleGroup>
+          <PillarPicker value={p.pillar} onChange={(pillar) => set({ pillar })} />
         </Field>
 
         <Field label="Angle" hint="The one point this post makes">
@@ -245,7 +234,8 @@ function PostEditor() {
                   const other = takenBy(r.slotIndex)
                   return (
                     <SelectItem key={r.slotIndex} value={String(r.slotIndex)} disabled={!!other}>
-                      {PILLAR_LABEL[r.pillar]} slot{other ? " · taken" : ""}
+                      <PillarMark pillar={r.pillar} className="size-4 text-[9px]" />
+                      {pillars.name(r.pillar)} slot{other ? " · taken" : ""}
                     </SelectItem>
                   )
                 })}

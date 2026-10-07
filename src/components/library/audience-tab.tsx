@@ -7,7 +7,8 @@ import { Chip, PageHeader, Panel, PanelHeader, PillarMark, Row } from "@/compone
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
-import { AUDIENCE_LABEL, PILLAR_LABEL, SEGMENT_LABEL } from "@/lib/labels"
+import { AUDIENCE_LABEL, SEGMENT_LABEL } from "@/lib/labels"
+import { usePillars } from "@/lib/pillars"
 import { useApp } from "@/lib/store"
 import type { AudienceKind, Prompt, Segment } from "@/lib/types"
 import { useUi } from "@/lib/ui"
@@ -75,6 +76,7 @@ function IdealClient({ seg }: { seg: Seg }) {
 function NeedAnIdea() {
   const prompts = useApp((s) => s.prompts)
   const newPost = useUi((s) => s.newPost)
+  const pillars = usePillars()
   const [ids, setIds] = useState(() => pickThree(prompts))
   const shown = ids.map((id) => prompts.find((p) => p.id === id)).filter((p): p is Prompt => !!p)
 
@@ -95,7 +97,7 @@ function NeedAnIdea() {
             <div className="min-w-0 flex-1">
               <p className="mb-1 flex items-center gap-1.5 text-xs text-muted-foreground">
                 <PillarMark pillar={p.pillar} className="size-4 text-[9px]" />
-                {PILLAR_LABEL[p.pillar]} → {p.angle}
+                {pillars.name(p.pillar)} → {p.angle}
               </p>
               <p className="text-sm">{p.text}</p>
             </div>

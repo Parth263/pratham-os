@@ -1,13 +1,14 @@
 "use client"
 
-import { CalendarCheckIcon, CalendarPlusIcon, ChevronLeftIcon, ChevronRightIcon, ChevronRightIcon as RowArrow } from "lucide-react"
+import { CalendarCheckIcon, CalendarPlusIcon, CheckIcon, ChevronLeftIcon, ChevronRightIcon, ChevronRightIcon as RowArrow } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useMemo } from "react"
 import { Chip, firstLine, Panel, PanelHeader, PillarMark, Row, STATUS_FILL, StatusPill } from "@/components/kit"
 import { Button } from "@/components/ui/button"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { addDaysTo, addMonthsTo, daysBetween, fmt, monthEndOf, monthStartOf, weekStartOf } from "@/lib/dates"
-import { PILLAR_LABEL, PILLARS, STATUS_LABEL, WEEKDAY_SHORT } from "@/lib/labels"
+import { STATUS_LABEL, WEEKDAY_SHORT } from "@/lib/labels"
+import { usePillars } from "@/lib/pillars"
 import { extrasForDay, postsByDate, rangeStats, slotsForDay, type Slot, type SlotContext } from "@/lib/slots"
 import { useApp } from "@/lib/store"
 import type { Day, Post } from "@/lib/types"
@@ -23,6 +24,7 @@ export function CalendarView({ view: viewParam, at }: { view: View | null; at: D
   const posts = useApp((s) => s.posts)
   const rhythm = useApp((s) => s.rhythm)
   const settings = useApp((s) => s.settings)
+  const pillars = usePillars()
   const view: View = viewParam ?? "month"
   const anchor = at && /^\d{4}-\d{2}-\d{2}$/.test(at) ? at : today
 
@@ -91,24 +93,32 @@ export function CalendarView({ view: viewParam, at }: { view: View | null; at: D
         <OpenSlots ctx={ctx} from={from} to={to} />
       </div>
 
-      <div className="mt-6 mb-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 px-1 text-xs text-muted-foreground">
-        {PILLARS.map((p) => (
-          <span key={p} className="inline-flex items-center gap-1.5">
-            <PillarMark pillar={p} />
-            {PILLAR_LABEL[p]}
-            <span className="tabular-nums text-foreground">
-              {stats.perPillar[p].filled}
-              <span className="text-muted-foreground">/{stats.perPillar[p].total}</span>
+      <div className="mt-6 mb-3 flex flex-wrap items-center gap-2">
+        {pillars.list.map((p) => {
+          const t = pillars.tone(p.id)
+          const n = stats.perPillar[p.id] ?? { filled: 0, total: 0 }
+          return (
+            <span key={p.id} className={cn("inline-flex h-7 items-center gap-1.5 rounded-md border px-2 text-xs", t.soft, t.border, t.text)}>
+              <span className={cn("size-2 rounded-full", t.dot)} />
+              <span className="font-medium">{p.name}</span>
+              <span className="tabular-nums opacity-80">
+                {n.filled}/{n.total}
+              </span>
             </span>
+          )
+        })}
+        {stats.noPillar > 0 && (
+          <span className="inline-flex h-7 items-center gap-1.5 rounded-md border px-2 text-xs text-muted-foreground">
+            No pillar <span className="tabular-nums text-foreground">{stats.noPillar}</span>
           </span>
-        ))}
-        <span className="inline-flex items-center gap-1.5">
-          <PillarMark pillar={null} />
-          No pillar <span className="tabular-nums text-foreground">{stats.noPillar}</span>
-        </span>
+        )}
       </div>
 
-      {view === "month" && desktop ? <MonthGrid ctx={ctx} from={from} to={to} /> : <DayList ctx={ctx} days={daysBetween(from, to)} />}
+      {view === "month" && desktop ? (
+        <MonthGrid ctx={ctx} from={from} to={to} />
+      ) : (
+        <DayList ctx={ctx} days={daysBetween(from, to)} columns={desktop && view === "week"} />
+      )}
     </div>
   )
 }
@@ -150,6 +160,7 @@ function SlotsFilled({ stats, label }: { stats: ReturnType<typeof rangeStats>; l
 
 function OpenSlots({ ctx, from, to }: { ctx: SlotContext; from: Day; to: Day }) {
   const newPost = useUi((s) => s.newPost)
+  const pillars = usePillars()
   const start = from > ctx.today ? from : ctx.today
   const byDate = postsByDate(ctx.posts)
   const days = start > to ? [] : daysBetween(start, to).map((d) => ({ date: d, slots: slotsForDay(d, ctx, byDate).filter((s) => s.state === "open") })).filter((d) => d.slots.length)
@@ -172,12 +183,15 @@ function OpenSlots({ ctx, from, to }: { ctx: SlotContext; from: Day; to: Day }) 
             >
               <span className="w-24 shrink-0 text-sm">{fmt(d.date, "EEE, MMM d")}</span>
               <span className="flex min-w-0 flex-1 flex-wrap gap-x-3 gap-y-1">
-                {d.slots.map((s) => (
-                  <span key={s.slotIndex} className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <PillarMark pillar={s.pillar} open />
-                    {PILLAR_LABEL[s.pillar]}
-                  </span>
-                ))}
+                {d.slots.map((s) => {
+                  const t = pillars.tone(s.pillar)
+                  return (
+                    <span key={s.slotIndex} className={cn("inline-flex h-6 items-center gap-1.5 rounded-md border border-dashed px-2 text-xs", t.dashed, t.text)}>
+                      <span className={cn("size-1.5 rounded-full", t.dot)} />
+                      {pillars.name(s.pillar)}
+                    </span>
+                  )
+                })}
               </span>
               <RowArrow className="size-4 text-muted-foreground" />
             </button>
@@ -205,6 +219,9 @@ function SlotBars({ slots }: { slots: Slot[] }) {
 
 function PostLine({ post, compact }: { post: Post; compact?: boolean }) {
   const openPost = useUi((s) => s.openPost)
+  const pillars = usePillars()
+  const t = pillars.tone(post.pillar)
+  const done = post.status === "posted"
   return (
     <button
       type="button"
@@ -212,11 +229,22 @@ function PostLine({ post, compact }: { post: Post; compact?: boolean }) {
         e.stopPropagation()
         openPost(post.id)
       }}
-      className={cn("flex w-full min-w-0 items-center gap-1.5 rounded-md text-left hover:bg-muted", compact ? "px-1 py-0.5 text-[11px]" : "px-1.5 py-1 text-sm")}
+      className={cn(
+        "flex w-full min-w-0 items-center gap-1.5 rounded-md text-left transition-colors",
+        t.soft,
+        t.softHover,
+        compact ? "px-1.5 py-1 text-[11px]" : "px-2 py-1.5 text-sm",
+      )}
     >
-      <PillarMark pillar={post.pillar} className={compact ? "size-3.5 rounded-[4px] text-[8px]" : undefined} />
-      <span className={cn("min-w-0 flex-1 truncate", post.status === "posted" && "text-muted-foreground")}>{firstLine(post.xText || post.angle)}</span>
-      {(post.status === "draft" || post.status === "idea") && <StatusPill status={post.status} className={compact ? "h-4 px-1 text-[9px]" : undefined} />}
+      <span className={cn("shrink-0 rounded-full", t.dot, compact ? "size-1.5" : "size-2")} />
+      <span className={cn("min-w-0 flex-1 truncate", done ? "text-muted-foreground" : "text-foreground")}>
+        {firstLine(post.xText || post.angle)}
+      </span>
+      {done ? (
+        <CheckIcon className={cn("shrink-0", t.text, compact ? "size-3" : "size-3.5")} />
+      ) : (
+        (post.status === "draft" || post.status === "idea") && <StatusPill status={post.status} className={cn("bg-card dark:bg-card", compact && "h-4 px-1 text-[9px]")} />
+      )}
     </button>
   )
 }
@@ -289,52 +317,62 @@ function MonthGrid({ ctx, from, to }: { ctx: SlotContext; from: Day; to: Day }) 
   )
 }
 
-function DayList({ ctx, days }: { ctx: SlotContext; days: Day[] }) {
+function DayList({ ctx, days, columns }: { ctx: SlotContext; days: Day[]; columns?: boolean }) {
   const newPost = useUi((s) => s.newPost)
+  const pillars = usePillars()
   const byDate = postsByDate(ctx.posts)
   return (
-    <div className="space-y-3">
+    <div className={columns ? "grid grid-cols-7 gap-2" : "space-y-3"}>
       {days.map((d) => {
         const slots = slotsForDay(d, ctx, byDate)
         const extras = extrasForDay(d, ctx, byDate)
         const isToday = d === ctx.today
         return (
-          <section key={d} className={cn("rounded-xl border bg-card p-3", d < ctx.today && "opacity-80")}>
-            <div className="mb-2 flex items-center gap-2 px-1">
-              <span className="text-sm font-medium">{fmt(d, "EEEE d MMM")}</span>
+          <section
+            key={d}
+            className={cn(
+              "rounded-xl border bg-card p-3",
+              columns && "flex min-h-72 flex-col p-2",
+              isToday && "ring-1 ring-foreground/20",
+              d < ctx.today && "opacity-80",
+            )}
+          >
+            <div className={cn("mb-2 flex items-center gap-2 px-1", columns && "flex-wrap gap-1")}>
+              <span className="text-sm font-medium">{fmt(d, columns ? "EEE d" : "EEEE d MMM")}</span>
               {isToday && <Chip className="h-5">Today</Chip>}
-              <span className="ml-auto w-20">
+              <span className={cn("ml-auto", columns ? "w-full pt-1" : "w-20")}>
                 <SlotBars slots={slots} />
               </span>
             </div>
             <div className="space-y-1.5">
               {slots.map((s) =>
                 s.post ? (
-                  <Row key={s.slotIndex} className="p-1">
-                    <PostLine post={s.post} />
-                  </Row>
+                  <PostLine key={s.slotIndex} post={s.post} />
                 ) : s.state === "open" ? (
                   <button
                     key={s.slotIndex}
                     type="button"
                     onClick={() => newPost({ date: d, slotIndex: s.slotIndex, pillar: s.pillar })}
-                    className="flex min-h-11 w-full items-center gap-2 rounded-lg border border-dashed px-3 text-left text-sm text-muted-foreground hover:bg-row hover:text-foreground"
+                    className={cn(
+                      "flex min-h-11 w-full items-center gap-2 rounded-lg border border-dashed px-3 text-left text-sm transition-colors",
+                      pillars.tone(s.pillar).dashed,
+                      pillars.tone(s.pillar).text,
+                      pillars.tone(s.pillar).softHover,
+                    )}
                   >
                     <PillarMark pillar={s.pillar} open />
-                    {PILLAR_LABEL[s.pillar]} slot open
+                    {pillars.name(s.pillar)} slot open
                     <span className="ml-auto text-xs">Write</span>
                   </button>
                 ) : (
-                  <Row key={s.slotIndex} className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <PillarMark pillar={s.pillar} open />
-                    {PILLAR_LABEL[s.pillar]} slot · skipped
+                  <Row key={s.slotIndex} className="flex items-center gap-2 text-sm text-muted-foreground/70">
+                    <PillarMark pillar={s.pillar} open className="opacity-50" />
+                    {pillars.name(s.pillar)} slot · skipped, no big deal
                   </Row>
                 ),
               )}
               {extras.map((p) => (
-                <Row key={p.id} className="p-1">
-                  <PostLine post={p} />
-                </Row>
+                <PostLine key={p.id} post={p} />
               ))}
               {slots.length === 0 && extras.length === 0 && (
                 <button type="button" onClick={() => newPost({ date: d })} className="w-full px-1 py-1 text-left text-xs text-muted-foreground hover:text-foreground">

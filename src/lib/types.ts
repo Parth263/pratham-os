@@ -1,7 +1,10 @@
+import type { ColorKey } from "./colors"
+
 /** A calendar day in IST, "yyyy-MM-dd". */
 export type Day = string
 
-export type Pillar = "visual" | "educational" | "business" | "personal"
+/** A pillar's id. Pillars are editable, so this is any string. */
+export type Pillar = string
 export type PostStatus = "idea" | "draft" | "ready" | "posted"
 export type Segment = "agency" | "ai_startup" | "other"
 export type LeadStage =
@@ -37,10 +40,18 @@ export interface Settings {
   floorInr: number
 }
 
+export interface PillarDef {
+  id: Pillar
+  name: string
+  color: ColorKey
+  definition: string
+  why: string
+  sortOrder: number
+}
+
 export interface Playbook {
   strategy: string
   summary: string
-  pillars: Record<Pillar, { definition: string; why: string }>
   rules: string[]
   /** written at the day-30 niche check */
   nicheDecision: string
@@ -182,10 +193,11 @@ export interface WeeklyReview extends Base {
 }
 
 export interface AppData {
-  version: 1
+  version: 2
   seeded: boolean
   settings: Settings
   playbook: Playbook
+  pillars: PillarDef[]
   rhythm: RhythmSlot[]
   posts: Post[]
   audience: AudienceLine[]

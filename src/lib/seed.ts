@@ -5,6 +5,7 @@ import type {
   Lead,
   MakeItem,
   Pillar,
+  PillarDef,
   Post,
   Prompt,
   Proof,
@@ -20,22 +21,57 @@ const stamp = () => {
   return { createdAt: now, updatedAt: now }
 }
 
-export const DEFAULT_RHYTHM: Pillar[] = ["visual", "educational", "visual", "business", "visual", "educational", "personal"]
+export const DEFAULT_PILLARS: Omit<PillarDef, "sortOrder">[] = [
+  {
+    id: "visual",
+    name: "Visual",
+    color: "violet",
+    definition:
+      "Client work, concepts, Framer builds and identity explorations. Lead with motion: a short screen recording or a strong screenshot, with a caption that gives context.",
+    why: "Founders see work someone else paid for. Motion stops the scroll faster than any headline.",
+  },
+  {
+    id: "educational",
+    name: "Educational",
+    color: "sky",
+    definition: "Landing-page and branding lessons for agency and startup founders: hero clarity, proof, positioning.",
+    why: "It shows you understand the problem before they hire you. These are the posts people save.",
+  },
+  {
+    id: "business",
+    name: "Business",
+    color: "amber",
+    definition: "The offer, results, the 10-day process, the day-3 checkpoint, milestones and case studies. The call to action lives here.",
+    why: "People can't hire you for something you never mention. Once a week, say it plainly.",
+  },
+  {
+    id: "personal",
+    name: "Personal",
+    color: "pink",
+    definition: "The journey: going solo, learning branding by December, what's working and what isn't.",
+    why: "People hire people. A little of your story makes the rest of your posts easier to trust.",
+  },
+]
 
-export function rhythmFromList(perDay: Pillar[][]): RhythmSlot[] {
-  return perDay.flatMap((pillars, weekday) => pillars.map((pillar, slotIndex) => ({ id: uid(), weekday, slotIndex, pillar })))
+export function defaultPillars(): PillarDef[] {
+  return DEFAULT_PILLARS.map((p, sortOrder) => ({ ...p, sortOrder }))
 }
 
-/** 14/week: one visual post plus one written post a day (~60% educational, 30% business, 10% personal). */
-export const STEP_UP_RHYTHM: Pillar[][] = [
-  ["visual", "educational"],
-  ["visual", "business"],
-  ["visual", "educational"],
-  ["visual", "educational"],
-  ["visual", "business"],
-  ["visual", "personal"],
-  ["visual", "educational"],
-]
+/** Rhythm presets by pillar position (0 = first pillar), so they work with any pillars. */
+export const RHYTHM_PRESETS = {
+  /** 7/week: one a day, visual-led */
+  daily: [[0], [1], [0], [2], [0], [1], [3]],
+  /** 14/week: one visual post plus one written post a day (~60% educational, 30% business, 10% personal) */
+  stepUp: [[0, 1], [0, 2], [0, 1], [0, 1], [0, 2], [0, 3], [0, 1]],
+} satisfies Record<string, number[][]>
+
+export function rhythmFromPreset(preset: number[][], pillars: PillarDef[]): RhythmSlot[] {
+  const ordered = [...pillars].sort((a, b) => a.sortOrder - b.sortOrder)
+  if (!ordered.length) return []
+  return preset.flatMap((day, weekday) =>
+    day.map((pos, slotIndex) => ({ id: uid(), weekday, slotIndex, pillar: (ordered[pos] ?? ordered[0]).id })),
+  )
+}
 
 export function blankPost(patch: Partial<Post> = {}): Post {
   return {
@@ -102,7 +138,7 @@ const make = (kind: MakeItem["kind"], title: string, sortOrder: number): MakeIte
 
 export function emptyData(): AppData {
   return {
-    version: 1,
+    version: 2,
     seeded: false,
     settings: {
       runStart: "2026-10-06",
@@ -119,15 +155,10 @@ export function emptyData(): AppData {
     playbook: {
       strategy: "",
       summary: "",
-      pillars: {
-        visual: { definition: "", why: "" },
-        educational: { definition: "", why: "" },
-        business: { definition: "", why: "" },
-        personal: { definition: "", why: "" },
-      },
       rules: [],
       nicheDecision: "",
     },
+    pillars: [],
     rhythm: [],
     posts: [],
     audience: [],
@@ -148,7 +179,8 @@ export function emptyData(): AppData {
 export function seedData(today: string): AppData {
   const base = emptyData()
   const week = weekStartOf(today)
-  const rhythm = rhythmFromList(DEFAULT_RHYTHM.map((p) => [p]))
+  const pillars = defaultPillars()
+  const rhythm = rhythmFromPreset(RHYTHM_PRESETS.daily, pillars)
   const slotFor = (d: string) => (d >= base.settings.runStart ? 0 : null)
 
   const proof: Proof[] = [
@@ -171,24 +203,6 @@ export function seedData(today: string): AppData {
       strategy: "How a solo designer gets agency and startup clients from content.",
       summary:
         "Post the work every day. Teach founders what their page is missing. Say what you sell once a week. Then turn the attention into real conversations in DMs.",
-      pillars: {
-        visual: {
-          definition: "Client work, concepts, Framer builds and identity explorations. Always a strong image with a caption that gives context.",
-          why: "Founders see work someone else paid for. Everyone stops for a good image.",
-        },
-        educational: {
-          definition: "Landing-page and branding lessons for agency and startup founders: hero clarity, proof, positioning.",
-          why: "It shows you understand the problem before they hire you. These are the posts people save.",
-        },
-        business: {
-          definition: "The offer, results, the 10-day process, the day-3 checkpoint, milestones and case studies. The call to action lives here.",
-          why: "People can't hire you for something you never mention. Once a week, say it plainly.",
-        },
-        personal: {
-          definition: "The journey: going solo, learning branding by December, what's working and what isn't.",
-          why: "People hire people. A little of your story makes the rest of your posts easier to trust.",
-        },
-      },
       rules: [
         "Post the work, not the advice about the work.",
         "Every post gets a visual.",
@@ -199,6 +213,7 @@ export function seedData(today: string): AppData {
       ],
       nicheDecision: "",
     },
+    pillars,
     rhythm,
     idealClients: {
       agency:
@@ -345,4 +360,25 @@ export function seedData(today: string): AppData {
       blankLead({ isSample: true, name: "Sample lead", company: "Bloom Coaching", segment: "other", stage: "replied", contactedAt: addDaysTo(today, -5), repliedAt: addDaysTo(today, -1) }),
     ],
   }
+}
+
+/** Brings saved or imported data up to the current shape. v1 had four fixed pillars. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function migrateData(raw: any): AppData {
+  const data = { ...raw }
+  if (!Array.isArray(data.pillars) || data.version === 1) {
+    const old = data.playbook?.pillars ?? {}
+    data.pillars = defaultPillars().map((p) => ({
+      ...p,
+      definition: old[p.id]?.definition || p.definition,
+      why: old[p.id]?.why || p.why,
+    }))
+    if (data.playbook) {
+      const { pillars: _drop, ...rest } = data.playbook
+      void _drop
+      data.playbook = rest
+    }
+  }
+  data.version = 2
+  return { ...emptyData(), ...data, seeded: true }
 }

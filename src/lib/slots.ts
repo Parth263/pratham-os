@@ -1,5 +1,4 @@
 import { addDaysTo, daysBetween, monthEndOf, monthStartOf, weekdayOf } from "./dates"
-import { PILLARS } from "./labels"
 import type { Day, Pillar, Post, PostStatus, RhythmSlot, Settings } from "./types"
 
 export type SlotState = "filled" | "open" | "missed"
@@ -78,10 +77,11 @@ export function monthStats(anyDay: Day, ctx: SlotContext): RangeStats {
 export function rangeStats(from: Day, to: Day, ctx: SlotContext): RangeStats {
   const slots = slotsInRange(from, to, ctx)
   const byStatus: Record<PostStatus, number> = { idea: 0, draft: 0, ready: 0, posted: 0 }
-  const perPillar = Object.fromEntries(PILLARS.map((p) => [p, { filled: 0, total: 0 }])) as RangeStats["perPillar"]
+  const perPillar: RangeStats["perPillar"] = {}
   let filled = 0
   let open = 0
   for (const s of slots) {
+    perPillar[s.pillar] ??= { filled: 0, total: 0 }
     perPillar[s.pillar].total++
     if (s.post) {
       filled++

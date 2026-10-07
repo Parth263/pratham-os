@@ -23,7 +23,8 @@ import { Input } from "@/components/ui/input"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { addDaysTo, daysLeftInWeek, fmt, greeting, runDay, weekdayOf, weekStartOf } from "@/lib/dates"
-import { MAKE_KIND_LABEL, PILLAR_LABEL, PILLARS, SEGMENT_LABEL, SEGMENTS } from "@/lib/labels"
+import { MAKE_KIND_LABEL, SEGMENT_LABEL, SEGMENTS } from "@/lib/labels"
+import { usePillars } from "@/lib/pillars"
 import { isDue, pickFocus } from "@/lib/pipeline"
 import { dayPublished, extrasForDay, slotsForDay, slotsInRange, workload, type SlotContext } from "@/lib/slots"
 import { useApp } from "@/lib/store"
@@ -164,6 +165,7 @@ function QuickCapture() {
   const addIdea = useApp((s) => s.addIdea)
   const [text, setText] = useState("")
   const [pillar, setPillar] = useState<Pillar | null>(null)
+  const pillars = usePillars()
 
   return (
     <form
@@ -192,9 +194,9 @@ function QuickCapture() {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuLabel>Pillar (optional)</DropdownMenuLabel>
-          {PILLARS.map((p) => (
-            <DropdownMenuItem key={p} onClick={() => setPillar(p)}>
-              <PillarMark pillar={p} /> {PILLAR_LABEL[p]}
+          {pillars.list.map((p) => (
+            <DropdownMenuItem key={p.id} onClick={() => setPillar(p.id)}>
+              <PillarMark pillar={p.id} /> {p.name}
             </DropdownMenuItem>
           ))}
           <DropdownMenuSeparator />
@@ -213,6 +215,7 @@ function ToPublish({ ctx }: { ctx: SlotContext }) {
   const [platform, setPlatform] = useState<Platform>("x")
   const openPost = useUi((s) => s.openPost)
   const newPost = useUi((s) => s.newPost)
+  const pillars = usePillars()
   const markPosted = useApp((s) => s.markPosted)
   const savePost = useApp((s) => s.savePost)
   const slots = slotsForDay(ctx.today, ctx)
@@ -267,7 +270,7 @@ function ToPublish({ ctx }: { ctx: SlotContext }) {
             <Row key={s.slotIndex} className="flex items-center gap-2.5">
               <PillarMark pillar={s.pillar} open />
               <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">
-                Today&apos;s {PILLAR_LABEL[s.pillar].toLowerCase()} slot is open — write one
+                Today&apos;s {pillars.name(s.pillar)} slot is open. Write one?
               </span>
               <Button variant="outline" size="sm" className="h-9 bg-card sm:h-7" onClick={() => newPost({ date: ctx.today, slotIndex: s.slotIndex, pillar: s.pillar })}>
                 <PencilLineIcon /> Write

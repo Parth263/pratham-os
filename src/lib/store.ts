@@ -4,7 +4,8 @@ import { create } from "zustand"
 import { createJSONStorage, persist } from "zustand/middleware"
 import { addDaysTo, todayIST, weekStartOf } from "./dates"
 import { afterStageChange, afterTouch } from "./pipeline"
-import { blankLead, blankPost, emptyData, seedData, uid } from "./seed"
+import { PILLAR_SWATCHES } from "./colors"
+import { blankLead, blankPost, emptyData, migrateData, seedData, uid } from "./seed"
 import { pickSlot } from "./slots"
 import type {
   AppData,
@@ -13,6 +14,8 @@ import type {
   Lead,
   LeadStage,
   MakeItem,
+  Pillar,
+  PillarDef,
   Playbook,
   Post,
   Prompt,
@@ -33,6 +36,11 @@ interface Actions {
   updateSettings: (patch: Partial<Settings>) => void
   updatePlaybook: (patch: Partial<Playbook>) => void
   setRhythm: (rhythm: RhythmSlot[]) => void
+  addPillar: () => string | null
+  updatePillar: (id: Pillar, patch: Partial<Omit<PillarDef, "id">>) => void
+  movePillar: (id: Pillar, dir: -1 | 1) => void
+  /** Removes a pillar. Its posts, slots and ideas move to `moveTo`, or lose their pillar when null. */
+  removePillar: (id: Pillar, moveTo: Pillar | null) => void
 
   savePost: (post: Post) => void
   addIdea: (text: string, pillar: Post["pillar"]) => void
@@ -82,6 +90,33 @@ export const useApp = create<AppState>()(
       updateSettings: (patch) => set((s) => ({ settings: { ...s.settings, ...patch } })),
       updatePlaybook: (patch) => set((s) => ({ playbook: { ...s.playbook, ...patch } })),
       setRhythm: (rhythm) => set({ rhythm }),
+      addPillar: () => {
+        const { pillars } = get()
+        if (pillars.length >= 6) return null
+        const used = new Set(pillars.map((p) => p.color))
+        const color = PILLAR_SWATCHES.find((c) => !used.has(c)) ?? PILLAR_SWATCHES[0]
+        const id = uid()
+        const sortOrder = Math.max(-1, ...pillars.map((p) => p.sortOrder)) + 1
+        set({ pillars: [...pillars, { id, name: "New pillar", color, definition: "", why: "", sortOrder }] })
+        return id
+      },
+      updatePillar: (id, patch) => set((s) => ({ pillars: s.pillars.map((p) => (p.id === id ? { ...p, ...patch } : p)) })),
+      movePillar: (id, dir) =>
+        set((s) => {
+          const ordered = [...s.pillars].sort((a, b) => a.sortOrder - b.sortOrder)
+          const i = ordered.findIndex((p) => p.id === id)
+          const j = i + dir
+          if (i < 0 || j < 0 || j >= ordered.length) return {}
+          ;[ordered[i], ordered[j]] = [ordered[j], ordered[i]]
+          return { pillars: ordered.map((p, sortOrder) => ({ ...p, sortOrder })) }
+        }),
+      removePillar: (id, moveTo) =>
+        set((s) => ({
+          pillars: s.pillars.filter((p) => p.id !== id),
+          posts: s.posts.map((p) => (p.pillar === id ? { ...p, pillar: moveTo, updatedAt: now() } : p)),
+          rhythm: moveTo ? s.rhythm.map((r) => (r.pillar === id ? { ...r, pillar: moveTo } : r)) : s.rhythm.filter((r) => r.pillar !== id),
+          prompts: moveTo ? s.prompts.map((p) => (p.pillar === id ? { ...p, pillar: moveTo } : p)) : s.prompts.filter((p) => p.pillar !== id),
+        })),
 
       savePost: (post) =>
         set((s) => {
@@ -206,14 +241,15 @@ export const useApp = create<AppState>()(
             touches: s.touches.filter((t) => !t.leadId || !sampleLeads.has(t.leadId)),
           }
         }),
-      importData: (data) => set({ ...emptyData(), ...data, seeded: true }),
+      importData: (data) => set(migrateData(data)),
       resetAll: () => set(seedData(todayIST())),
     }),
     {
       name: "studio-os",
-      version: 1,
+      version: 2,
       storage: createJSONStorage(() => localStorage),
       skipHydration: true,
+      migrate: (persisted) => migrateData(persisted) as AppState,
       partialize: (s) => {
         const data: Partial<AppState> = { ...s }
         for (const k of Object.keys(data) as (keyof AppState)[]) if (typeof data[k] === "function") delete data[k]

@@ -3,29 +3,11 @@ import type {
   Channel,
   LeadStage,
   MakeKind,
-  Pillar,
   PostStatus,
   ProofKind,
   Segment,
   SwipeKind,
 } from "./types"
-
-export const PILLARS: Pillar[] = ["visual", "educational", "business", "personal"]
-
-export const PILLAR_LABEL: Record<Pillar, string> = {
-  visual: "Visual",
-  educational: "Educational",
-  business: "Business",
-  personal: "Personal",
-}
-
-/** Monochrome UI: pillars are told apart by a letter, never by colour. */
-export const PILLAR_LETTER: Record<Pillar, string> = {
-  visual: "V",
-  educational: "E",
-  business: "B",
-  personal: "P",
-}
 
 export const STATUSES: PostStatus[] = ["idea", "draft", "ready", "posted"]
 

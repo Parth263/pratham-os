@@ -1,8 +1,11 @@
+"use client"
+
 import type { LucideIcon } from "lucide-react"
 import { ArrowRightIcon, CheckIcon } from "lucide-react"
 import type * as React from "react"
 import { cn } from "@/lib/utils"
-import { PILLAR_LABEL, PILLAR_LETTER, STATUS_LABEL } from "@/lib/labels"
+import { STATUS_LABEL } from "@/lib/labels"
+import { usePillars } from "@/lib/pillars"
 import type { Pillar, PostStatus } from "@/lib/types"
 
 export function Panel({ className, ...props }: React.ComponentProps<"section">) {
@@ -44,30 +47,39 @@ export function Chip({ className, ...props }: React.ComponentProps<"span">) {
   )
 }
 
-/** Pillars are told apart by a letter, never by colour. */
+/** A pillar's colour plus its first letter, so colour is never the only cue. */
 export function PillarMark({ pillar, open, className }: { pillar: Pillar | null; open?: boolean; className?: string }) {
+  const pillars = usePillars()
+  const t = pillars.tone(pillar)
+  const name = pillars.name(pillar)
   return (
     <span
-      title={pillar ? PILLAR_LABEL[pillar] : "No pillar"}
-      aria-label={pillar ? PILLAR_LABEL[pillar] : "No pillar"}
+      title={name}
+      aria-label={name}
       className={cn(
         "inline-flex size-[18px] shrink-0 items-center justify-center rounded-[5px] text-[10px] leading-none font-semibold",
-        open
-          ? "border border-dashed border-muted-foreground/50 text-muted-foreground"
-          : "bg-muted text-foreground/70",
+        open ? cn("border border-dashed bg-transparent", t.dashed, t.text) : cn(t.soft, t.text),
         className,
       )}
     >
-      {pillar ? PILLAR_LETTER[pillar] : "–"}
+      {pillars.letter(pillar)}
     </span>
   )
 }
 
+export function PillarDot({ pillar, className }: { pillar: Pillar | null; className?: string }) {
+  const pillars = usePillars()
+  return <span aria-hidden className={cn("size-2 shrink-0 rounded-full", pillars.tone(pillar).dot, className)} />
+}
+
+/** Tinted chip with the pillar's name. */
 export function PillarTag({ pillar, className }: { pillar: Pillar | null; className?: string }) {
+  const pillars = usePillars()
+  const t = pillars.tone(pillar)
   return (
-    <span className={cn("inline-flex items-center gap-1.5 text-xs text-muted-foreground", className)}>
-      <PillarMark pillar={pillar} />
-      {pillar ? PILLAR_LABEL[pillar] : "No pillar"}
+    <span className={cn("inline-flex h-6 items-center gap-1.5 rounded-md border px-2 text-xs font-medium", t.soft, t.border, t.text, className)}>
+      <span className={cn("size-1.5 rounded-full", t.dot)} />
+      {pillars.name(pillar)}
     </span>
   )
 }

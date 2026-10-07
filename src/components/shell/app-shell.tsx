@@ -93,14 +93,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, [])
 
   return (
-    <div className="min-h-dvh md:p-4 lg:p-6">
-      <div className="mx-auto flex min-h-dvh max-w-[1100px] flex-col bg-surface md:min-h-[calc(100dvh-2rem)] md:rounded-2xl md:border md:shadow-sm lg:min-h-[calc(100dvh-3rem)]">
-        {/* Top bar */}
-        <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b bg-surface/90 px-4 pt-[env(safe-area-inset-top)] backdrop-blur md:static md:h-16 md:rounded-t-2xl md:border-b-0 md:bg-transparent md:px-6 md:backdrop-blur-none">
-          <Link href="/" className="flex items-center gap-2.5">
-            <Logo />
-            <span className="text-sm font-medium">Studio OS</span>
-          </Link>
+    <div className="flex min-h-dvh flex-col bg-surface">
+      <div className="flex flex-1 flex-col">
+        {/* Top bar: full width, nav centred */}
+        <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b bg-surface/90 px-4 pt-[env(safe-area-inset-top)] backdrop-blur sm:px-6 md:h-16 lg:px-10 2xl:px-16">
+          <div className="flex flex-1 items-center">
+            <Link href="/" className="flex items-center gap-2.5">
+              <Logo />
+              <span className="text-sm font-medium">Studio OS</span>
+            </Link>
+          </div>
 
           <nav className="mx-auto hidden items-center gap-1 md:flex" aria-label="Main">
             {NAV.map(({ href, label, icon: Icon }) => (
@@ -118,7 +120,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             ))}
           </nav>
 
-          <div className="ml-auto hidden items-center gap-1 md:flex">
+          <div className="hidden flex-1 items-center justify-end gap-1 md:flex">
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button variant="ghost" size="icon" aria-label="Help" onClick={() => setHelpOpen(true)} className="text-muted-foreground">
@@ -163,8 +165,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
-        <main className="flex-1 px-4 pt-5 pb-28 sm:px-6 md:px-10 md:pt-6 md:pb-12">
-          {hydrated ? children : null}
+        <main className="flex-1 px-4 pt-5 pb-28 sm:px-6 md:pt-8 md:pb-14 lg:px-10 2xl:px-16">
+          {/* The nav spans the full width; the content stays readable at 1280px. */}
+          <div className="mx-auto w-full max-w-7xl">{hydrated ? children : null}</div>
         </main>
       </div>
 

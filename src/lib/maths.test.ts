@@ -114,3 +114,23 @@ describe("pipeline", () => {
     expect(pickFocus([item("branding", 0), item("client", 2, "2026-10-20"), item("client", 1, "2026-10-09")], null)?.id).toBe("client1")
   })
 })
+
+describe("migration", () => {
+  it("v1 data gets editable pillars and keeps its text and posts", async () => {
+    const { migrateData } = await import("./seed")
+    const v1 = {
+      version: 1,
+      seeded: true,
+      playbook: { strategy: "s", summary: "", rules: [], nicheDecision: "", pillars: { visual: { definition: "My visual words", why: "w" } } },
+      posts: [post({ pillar: "visual", date: "2026-10-06", slotIndex: 0 })],
+      rhythm,
+    }
+    const v2 = migrateData(v1)
+    expect(v2.version).toBe(2)
+    expect(v2.pillars.map((p) => p.id)).toEqual(["visual", "educational", "business", "personal"])
+    expect(v2.pillars[0].definition).toBe("My visual words")
+    expect(new Set(v2.pillars.map((p) => p.color)).size).toBe(4)
+    expect(v2.posts[0].pillar).toBe("visual")
+    expect("pillars" in v2.playbook).toBe(false)
+  })
+})

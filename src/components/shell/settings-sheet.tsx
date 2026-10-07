@@ -1,11 +1,11 @@
 "use client"
 
-import { DownloadIcon, PlusIcon, UploadIcon, XIcon } from "lucide-react"
+import { ArrowRightIcon, DownloadIcon, UploadIcon, XIcon } from "lucide-react"
+import { useRouter } from "next/navigation"
 import { useTheme } from "next-themes"
 import { useRef, useState } from "react"
 import { toast } from "sonner"
 import { DatePicker } from "@/components/date-picker"
-import { PillarMark } from "@/components/kit"
 import { Field, ResponsiveSheet } from "@/components/responsive-sheet"
 import {
   AlertDialog,
@@ -21,14 +21,12 @@ import {
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { fmt, todayIST } from "@/lib/dates"
-import { MAKE_KIND_LABEL, PILLAR_LABEL, PILLARS, WEEKDAY_SHORT } from "@/lib/labels"
-import { DEFAULT_RHYTHM, rhythmFromList, STEP_UP_RHYTHM } from "@/lib/seed"
-import { snapshot, uid, useApp } from "@/lib/store"
-import type { AppData, MakeKind, Pillar } from "@/lib/types"
+import { MAKE_KIND_LABEL } from "@/lib/labels"
+import { snapshot, useApp } from "@/lib/store"
+import type { AppData, MakeKind } from "@/lib/types"
 import { useUi } from "@/lib/ui"
 import { cn } from "@/lib/utils"
 
@@ -64,7 +62,7 @@ export function SettingsSheet() {
   return (
     <ResponsiveSheet open={open} onOpenChange={setOpen} title="Settings" description="Changes save as you go.">
       <div className="space-y-6">
-        <RhythmEditor />
+        <PillarsLink />
         <PlanSettings />
         <MakeLists />
         <Appearance />
@@ -75,64 +73,21 @@ export function SettingsSheet() {
   )
 }
 
-function RhythmEditor() {
-  const rhythm = useApp((s) => s.rhythm)
-  const setRhythm = useApp((s) => s.setRhythm)
-  const perWeek = rhythm.length
-
-  const change = (id: string, pillar: Pillar) => setRhythm(rhythm.map((r) => (r.id === id ? { ...r, pillar } : r)))
-  const remove = (id: string) => setRhythm(rhythm.filter((r) => r.id !== id))
-  const add = (weekday: number) => {
-    const next = Math.max(-1, ...rhythm.filter((r) => r.weekday === weekday).map((r) => r.slotIndex)) + 1
-    setRhythm([...rhythm, { id: uid(), weekday, slotIndex: next, pillar: "visual" }])
-  }
-
+function PillarsLink() {
+  const router = useRouter()
+  const setOpen = useUi((s) => s.setSettingsOpen)
   return (
-    <Section title={`Rhythm · ${perWeek} posts a week`} hint="Every slot count and open slot comes from this list.">
-      <div className="flex flex-wrap gap-2">
-        <Button variant="outline" size="sm" onClick={() => setRhythm(rhythmFromList(DEFAULT_RHYTHM.map((p) => [p])))}>
-          1 a day (7/week)
-        </Button>
-        <Button variant="outline" size="sm" onClick={() => setRhythm(rhythmFromList(STEP_UP_RHYTHM))}>
-          Step up: 2 a day (14/week)
-        </Button>
-      </div>
-      <div className="space-y-1.5">
-        {WEEKDAY_SHORT.map((day, weekday) => {
-          const slots = rhythm.filter((r) => r.weekday === weekday).sort((a, b) => a.slotIndex - b.slotIndex)
-          return (
-            <div key={day} className="flex items-center gap-2 rounded-lg bg-row px-2 py-1.5">
-              <span className="w-9 shrink-0 pl-1 text-xs text-muted-foreground">{day}</span>
-              <div className="flex flex-1 flex-wrap gap-1.5">
-                {slots.map((r) => (
-                  <div key={r.id} className="flex items-center rounded-md border bg-card">
-                    <Select value={r.pillar} onValueChange={(v) => change(r.id, v as Pillar)}>
-                      <SelectTrigger size="sm" className="h-7 gap-1.5 border-0 pr-1.5 pl-2 text-xs shadow-none">
-                        <PillarMark pillar={r.pillar} className="size-4 text-[9px]" />
-                        {PILLAR_LABEL[r.pillar]}
-                      </SelectTrigger>
-                      <SelectContent>
-                        {PILLARS.map((p) => (
-                          <SelectItem key={p} value={p}>
-                            {PILLAR_LABEL[p]}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <button type="button" aria-label="Remove slot" className="px-1.5 text-muted-foreground hover:text-foreground" onClick={() => remove(r.id)}>
-                      <XIcon className="size-3" />
-                    </button>
-                  </div>
-                ))}
-                {slots.length === 0 && <span className="py-1 text-xs text-muted-foreground">Rest day</span>}
-              </div>
-              <Button variant="ghost" size="icon-sm" aria-label={`Add a slot on ${day}`} onClick={() => add(weekday)}>
-                <PlusIcon />
-              </Button>
-            </div>
-          )
-        })}
-      </div>
+    <Section title="Pillars & rhythm" hint="Name, colour and order your pillars, and set how many posts a week. Both live in the Playbook.">
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => {
+          setOpen(false)
+          router.push("/playbook#pillars")
+        }}
+      >
+        Edit in Playbook <ArrowRightIcon />
+      </Button>
     </Section>
   )
 }
@@ -292,7 +247,7 @@ function DataSettings() {
             if (!file) return
             try {
               const data = JSON.parse(await file.text()) as AppData
-              if (data.version !== 1 || !Array.isArray(data.posts)) throw new Error("bad file")
+              if (![1, 2].includes(Number(data.version)) || !Array.isArray(data.posts)) throw new Error("bad file")
               importData(data)
               toast("Backup imported")
             } catch {

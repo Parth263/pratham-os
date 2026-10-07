@@ -8,12 +8,13 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { fmt } from "@/lib/dates"
-import { PILLAR_LABEL } from "@/lib/labels"
+import { usePillars } from "@/lib/pillars"
 import { upcomingOpenSlots } from "@/lib/slots"
 import { blankPost, uid, useApp } from "@/lib/store"
 import type { Pillar, Post, Proof } from "@/lib/types"
 import { useToday, useUi } from "@/lib/ui"
 
+/** Show it, teach from it, sell with it. Falls back to your first three pillars if these were renamed away. */
 const PLAN: { pillar: Pillar; angle: (p: Proof) => string }[] = [
   { pillar: "visual", angle: (p) => `Show it: ${p.title}` },
   { pillar: "educational", angle: (p) => `The lesson behind ${p.title.toLowerCase()}` },
@@ -28,6 +29,8 @@ export function ThreePostsTab() {
   const settings = useApp((s) => s.settings)
   const savePost = useApp((s) => s.savePost)
   const openPost = useUi((s) => s.openPost)
+  const pillars = usePillars()
+  const plan = PLAN.map((step, i) => ({ ...step, pillar: pillars.get(step.pillar) ? step.pillar : (pillars.list[i]?.id ?? null) }))
   const [proofId, setProofId] = useState<string>("")
   const [schedule, setSchedule] = useState(true)
   const chosen = proof.find((p) => p.id === proofId)
@@ -46,7 +49,7 @@ export function ThreePostsTab() {
     const groupId = uid()
     const taken = new Set<string>()
     const open = upcomingOpenSlots({ rhythm, posts, settings, today }, 60).flatMap((d) => d.slots)
-    for (const step of PLAN) {
+    for (const step of plan) {
       const slot = schedule ? open.find((s) => s.pillar === step.pillar && !taken.has(`${s.date}:${s.slotIndex}`)) : undefined
       if (slot) taken.add(`${slot.date}:${slot.slotIndex}`)
       savePost(
@@ -93,10 +96,10 @@ export function ThreePostsTab() {
             </Select>
             {chosen && (
               <div className="space-y-2">
-                {PLAN.map((step) => (
-                  <Row key={step.pillar} className="flex items-center gap-2.5">
+                {plan.map((step, i) => (
+                  <Row key={i} className="flex items-center gap-2.5">
                     <PillarMark pillar={step.pillar} />
-                    <span className="w-24 shrink-0 text-xs text-muted-foreground">{PILLAR_LABEL[step.pillar]}</span>
+                    <span className="w-24 shrink-0 text-xs text-muted-foreground">{pillars.name(step.pillar)}</span>
                     <span className="min-w-0 flex-1 truncate text-sm">{step.angle(chosen)}</span>
                   </Row>
                 ))}
