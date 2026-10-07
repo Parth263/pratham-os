@@ -36,7 +36,7 @@ export function HelpDialog() {
             Shortcuts: <kbd className="rounded border px-1">N</kbd> new post · <kbd className="rounded border px-1">⌘</kbd>
             <kbd className="rounded border px-1">↵</kbd> save a post
           </p>
-          <p>Your data is saved in this browser. Export a backup from Settings now and then.</p>
+          <p>Everything saves to your database and syncs between your phone and laptop. It keeps working offline and catches up when you&apos;re back.</p>
           <p>Layout inspired by Sofiane&apos;s post planner (@sofianedesign). Strategy shaped by Liutauras Liucvaikis (@liutauras_liu).</p>
         </div>
       </DialogContent>

@@ -1,6 +1,6 @@
 "use client"
 
-import { ArrowRightIcon, DownloadIcon, UploadIcon, XIcon } from "lucide-react"
+import { ArrowRightIcon, DownloadIcon, LogOutIcon, UploadIcon, XIcon } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useTheme } from "next-themes"
 import { useRef, useState } from "react"
@@ -25,7 +25,9 @@ import { Textarea } from "@/components/ui/textarea"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { fmt, todayIST } from "@/lib/dates"
 import { MAKE_KIND_LABEL } from "@/lib/labels"
+import { logout } from "@/app/login/actions"
 import { snapshot, useApp } from "@/lib/store"
+import { useSync } from "@/lib/sync"
 import type { AppData, MakeKind } from "@/lib/types"
 import { useUi } from "@/lib/ui"
 import { cn } from "@/lib/utils"
@@ -56,7 +58,7 @@ function NumberInput({ value, onChange, className }: { value: number; onChange: 
   )
 }
 
-export function SettingsSheet() {
+export function SettingsSheet({ authEnabled }: { authEnabled: boolean }) {
   const open = useUi((s) => s.settingsOpen)
   const setOpen = useUi((s) => s.setSettingsOpen)
   return (
@@ -66,7 +68,7 @@ export function SettingsSheet() {
         <PlanSettings />
         <MakeLists />
         <Appearance />
-        <DataSettings />
+        <DataSettings authEnabled={authEnabled} />
         <History />
       </div>
     </ResponsiveSheet>
@@ -212,7 +214,8 @@ function Appearance() {
   )
 }
 
-function DataSettings() {
+function DataSettings({ authEnabled }: { authEnabled: boolean }) {
+  const syncMode = useSync((s) => s.mode)
   const removeSamples = useApp((s) => s.removeSamples)
   const importData = useApp((s) => s.importData)
   const resetAll = useApp((s) => s.resetAll)
@@ -228,7 +231,14 @@ function DataSettings() {
   }
 
   return (
-    <Section title="Your data" hint="Everything is saved in this browser. Export a backup now and then, and import it on another device.">
+    <Section
+      title="Your data"
+      hint={
+        syncMode === "local"
+          ? "No database is connected, so everything stays in this browser. Export a backup now and then."
+          : "Saved to your database and synced across your devices. A JSON export is a handy extra backup."
+      }
+    >
       <div className="flex flex-wrap gap-2">
         <Button variant="outline" size="sm" onClick={exportJson}>
           <DownloadIcon /> Export JSON
@@ -265,6 +275,11 @@ function DataSettings() {
         >
           Remove sample data
         </Button>
+        {authEnabled && (
+          <Button variant="outline" size="sm" onClick={() => void logout()}>
+            <LogOutIcon /> Sign out
+          </Button>
+        )}
         <AlertDialog>
           <AlertDialogTrigger asChild>
             <Button variant="ghost" size="sm" className="text-muted-foreground">
@@ -274,7 +289,7 @@ function DataSettings() {
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Start over?</AlertDialogTitle>
-              <AlertDialogDescription>This clears everything in this browser and loads the starting content again. Export a backup first if you want to keep anything.</AlertDialogDescription>
+              <AlertDialogDescription>This clears everything, on every synced device, and loads the starting content again. Export a backup first if you want to keep anything.</AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Keep my data</AlertDialogCancel>

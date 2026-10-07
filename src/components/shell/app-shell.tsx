@@ -5,6 +5,7 @@ import {
   CalendarDaysIcon,
   CircleHelpIcon,
   LibraryIcon,
+  LogOutIcon,
   MoreHorizontalIcon,
   PlusIcon,
   SlidersHorizontalIcon,
@@ -14,11 +15,14 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useEffect, useState } from "react"
 import { useTheme } from "next-themes"
+import { Logo } from "@/components/logo"
+import { logout } from "@/app/login/actions"
 import { HelpDialog } from "@/components/shell/help-dialog"
 import { LeadSheet } from "@/components/library/lead-sheet"
 import { PostSheet } from "@/components/post-sheet"
 import { ReviewSheet } from "@/components/review-sheet"
 import { SettingsSheet } from "@/components/shell/settings-sheet"
+import { SyncStatus } from "@/components/shell/sync-status"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -29,6 +33,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { useApp } from "@/lib/store"
+import { hasSyncedBefore, startSync } from "@/lib/sync"
 import { useUi } from "@/lib/ui"
 import { cn } from "@/lib/utils"
 
@@ -44,35 +49,42 @@ function useActive() {
   return (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href))
 }
 
-export function Logo() {
-  return (
-    <span className="flex size-7 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-      <svg viewBox="0 0 16 16" className="size-3.5" fill="currentColor" aria-hidden>
-        <rect x="2" y="2" width="5" height="5" rx="1.2" />
-        <rect x="9" y="2" width="5" height="5" rx="2.5" />
-        <rect x="2" y="9" width="5" height="5" rx="2.5" />
-        <rect x="9" y="9" width="5" height="5" rx="1.2" />
-      </svg>
-    </span>
-  )
+/**
+ * Loads the browser cache exactly once, before sync starts. Loading it again later would look
+ * like a burst of edits and could push a stale copy over newer data from another device.
+ */
+let localReady: Promise<void> | null = null
+function loadLocalOnce(): Promise<void> {
+  localReady ??= new Promise<void>((resolve) => {
+    const unsub = useApp.persist.onFinishHydration(() => {
+      unsub()
+      resolve()
+    })
+    void useApp.persist.rehydrate()
+  })
+  return localReady
 }
 
 function useHydrated() {
   const [hydrated, setHydrated] = useState(false)
   useEffect(() => {
-    const done = () => {
+    let cancelled = false
+    void (async () => {
+      await loadLocalOnce()
       useApp.getState().seedIfEmpty()
-      setHydrated(true)
+      const sync = startSync()
+      // A browser that has synced before shows its cache at once; a new one waits briefly for the database.
+      if (!hasSyncedBefore()) await Promise.race([sync, new Promise((r) => setTimeout(r, 6000))])
+      if (!cancelled) setHydrated(true)
+    })()
+    return () => {
+      cancelled = true
     }
-    const unsub = useApp.persist.onFinishHydration(done)
-    void useApp.persist.rehydrate()
-    if (useApp.persist.hasHydrated()) done()
-    return unsub
   }, [])
   return hydrated
 }
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+export function AppShell({ children, authEnabled }: { children: React.ReactNode; authEnabled: boolean }) {
   const hydrated = useHydrated()
   const isActive = useActive()
   const newPost = useUi((s) => s.newPost)
@@ -121,6 +133,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </nav>
 
           <div className="hidden flex-1 items-center justify-end gap-1 md:flex">
+            <SyncStatus className="mr-1" />
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button variant="ghost" size="icon" aria-label="Help" onClick={() => setHelpOpen(true)} className="text-muted-foreground">
@@ -142,7 +155,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </Button>
           </div>
 
-          <div className="ml-auto md:hidden">
+          <div className="ml-auto flex items-center md:hidden">
+            <SyncStatus />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="size-10" aria-label="Menu">
@@ -160,6 +174,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <DropdownMenuItem onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}>
                   <SunIcon /> {resolvedTheme === "dark" ? "Light mode" : "Dark mode"}
                 </DropdownMenuItem>
+                {authEnabled && (
+                  <DropdownMenuItem onClick={() => void logout()}>
+                    <LogOutIcon /> Sign out
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -207,7 +226,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {hydrated && (
         <>
           <PostSheet />
-          <SettingsSheet />
+          <SettingsSheet authEnabled={authEnabled} />
           <ReviewSheet />
           <LeadSheet />
           <HelpDialog />
